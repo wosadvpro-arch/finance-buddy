@@ -366,7 +366,7 @@ function Dashboard({ transactions, accountMode }) {
 
       <div>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Dashboard</h1>
           <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${
             isPessoal
               ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
@@ -379,7 +379,7 @@ function Dashboard({ transactions, accountMode }) {
       </div>
 
       {/* ── KPI Cards estilo Mordomize ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           label="Receitas no período"
           value={fmt(receitas)}
@@ -429,56 +429,34 @@ function Dashboard({ transactions, accountMode }) {
         </div>
       )}
 
-      {/* Charts row — existing area chart + pie */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="p-5 lg:col-span-2">
-          <h3 className="text-white font-semibold mb-4">Receitas vs Despesas</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={monthlyData}>
-              <defs>
-                <linearGradient id="gr" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="gd" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="month" tick={{fill:"#94a3b8",fontSize:12}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fill:"#94a3b8",fontSize:11}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v/1000}k`}/>
-              <Tooltip content={<CustomTooltip/>}/>
-              <Area type="monotone" dataKey="receitas" name="Receitas" stroke="#10b981" fill="url(#gr)" strokeWidth={2}/>
-              <Area type="monotone" dataKey="despesas" name="Despesas" stroke="#f43f5e" fill="url(#gd)" strokeWidth={2}/>
-            </AreaChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card className="p-5">
-          <h3 className="text-white font-semibold mb-4">Categorias</h3>
-          <ResponsiveContainer width="100%" height={160}>
-            <PieChart>
-              <Pie data={categoryData} cx="50%" cy="50%" innerRadius={40} outerRadius={70}
-                dataKey="value" paddingAngle={3}>
-                {categoryData.map((c,i)=><Cell key={i} fill={c.color}/>)}
-              </Pie>
-              <Tooltip formatter={(v)=>fmt(v)} contentStyle={{background:"#0f172a",border:"1px solid #334155",borderRadius:12}}/>
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-1.5 mt-2">
-            {categoryData.slice(0,4).map((c,i)=>(
-              <div key={i} className="flex items-center justify-between text-xs">
+      {/* Categorias (pie) */}
+      <Card className="p-5">
+        <h3 className="text-white font-semibold mb-4">Distribuição por Categoria</h3>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="w-full sm:w-48 flex-shrink-0">
+            <ResponsiveContainer width="100%" height={160}>
+              <PieChart>
+                <Pie data={categoryData} cx="50%" cy="50%" innerRadius={40} outerRadius={70}
+                  dataKey="value" paddingAngle={3}>
+                  {categoryData.map((c,i)=><Cell key={i} fill={c.color}/>)}
+                </Pie>
+                <Tooltip formatter={(v)=>fmt(v)} contentStyle={{background:"#0f172a",border:"1px solid #334155",borderRadius:12}}/>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex-1 w-full grid grid-cols-2 gap-2">
+            {categoryData.map((c,i)=>(
+              <div key={i} className="flex items-center justify-between text-xs p-2 rounded-xl bg-slate-700/30">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full" style={{background:c.color}}/>
-                  <span className="text-slate-400">{c.name}</span>
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{background:c.color}}/>
+                  <span className="text-slate-300">{c.name}</span>
                 </span>
-                <span className="text-slate-300 font-mono">{fmt(c.value)}</span>
+                <span className="text-slate-300 font-mono font-semibold">{fmt(c.value)}</span>
               </div>
             ))}
           </div>
-        </Card>
-      </div>
+        </div>
+      </Card>
 
       {/* ── FLUXO DE CAIXA PESSOAL ─────────────────────────────────────── */}
       {accountMode === "pessoal" && (
@@ -2362,12 +2340,281 @@ function AccountToggle({ mode, setMode }) {
   );
 }
 
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+function useAuth() {
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("fb_session") || "null"); } catch { return null; }
+  });
+
+  const login = (email, password) => {
+    const users = JSON.parse(localStorage.getItem("fb_users") || "{}");
+    const u = users[email.toLowerCase()];
+    if (!u || u.password !== password) return "Email ou senha incorretos.";
+    const session = { email: u.email, name: u.name, plan: u.plan };
+    localStorage.setItem("fb_session", JSON.stringify(session));
+    setUser(session);
+    return null;
+  };
+
+  const register = (name, email, password) => {
+    if (!name.trim() || !email.trim() || !password) return "Preencha todos os campos.";
+    if (password.length < 6) return "Senha deve ter pelo menos 6 caracteres.";
+    const users = JSON.parse(localStorage.getItem("fb_users") || "{}");
+    if (users[email.toLowerCase()]) return "Este email já está cadastrado.";
+    users[email.toLowerCase()] = { name, email: email.toLowerCase(), password, plan: "Free",
+      createdAt: new Date().toISOString() };
+    localStorage.setItem("fb_users", JSON.stringify(users));
+    return login(email, password);
+  };
+
+  const logout = () => {
+    localStorage.removeItem("fb_session");
+    setUser(null);
+  };
+
+  return { user, login, register, logout };
+}
+
+function getUserData(email, key, fallback) {
+  try {
+    const all = JSON.parse(localStorage.getItem("fb_data_" + key) || "{}");
+    return all[email] !== undefined ? all[email] : fallback;
+  } catch { return fallback; }
+}
+
+function setUserData(email, key, value) {
+  try {
+    const all = JSON.parse(localStorage.getItem("fb_data_" + key) || "{}");
+    all[email] = value;
+    localStorage.setItem("fb_data_" + key, JSON.stringify(all));
+  } catch {}
+}
+
+// ─── LOGIN / REGISTER SCREEN ──────────────────────────────────────────────────
+function AuthScreen({ onLogin, onRegister }) {
+  const [mode, setMode] = useState("login");
+  const [form, setForm] = useState({ name:"", email:"", password:"" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handle = async (e) => {
+    e.preventDefault();
+    setError(""); setLoading(true);
+    await new Promise(r => setTimeout(r, 400));
+    const err = mode === "login"
+      ? onLogin(form.email, form.password)
+      : onRegister(form.name, form.email, form.password);
+    if (err) { setError(err); setLoading(false); }
+  };
+
+  const f = (key, val) => setForm(p => ({...p, [key]: val}));
+
+  return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4"
+      style={{fontFamily:"'DM Sans', system-ui, sans-serif"}}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');`}</style>
+
+      {/* Background glows */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 left-1/2 w-[600px] h-[600px] bg-orange-500/8 rounded-full blur-3xl -translate-y-1/2 -translate-x-1/2"/>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-violet-500/8 rounded-full blur-3xl translate-y-1/3"/>
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center font-bold text-slate-900 text-2xl shadow-2xl shadow-orange-500/30 mb-4">
+            FB
+          </div>
+          <h1 className="text-white font-bold text-2xl">Finance Buddy</h1>
+          <p className="text-slate-400 text-sm mt-1">Controle financeiro pessoal e empresarial</p>
+        </div>
+
+        {/* Card */}
+        <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-6 backdrop-blur-sm shadow-2xl">
+          {/* Mode toggle */}
+          <div className="flex gap-1 bg-slate-700/50 p-1 rounded-xl mb-6">
+            {[["login","Entrar"],["register","Criar conta"]].map(([m,l])=>(
+              <button key={m} onClick={()=>{setMode(m);setError("");}}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  mode===m ? "bg-orange-500 text-white shadow-sm" : "text-slate-400 hover:text-white"
+                }`}>{l}</button>
+            ))}
+          </div>
+
+          <form onSubmit={handle} className="space-y-4">
+            {mode === "register" && (
+              <div>
+                <label className="text-slate-400 text-xs mb-1 block">Nome completo</label>
+                <input type="text" placeholder="Seu nome" required value={form.name}
+                  onChange={e=>f("name",e.target.value)}
+                  className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500 transition-colors placeholder-slate-500"/>
+              </div>
+            )}
+            <div>
+              <label className="text-slate-400 text-xs mb-1 block">Email</label>
+              <input type="email" placeholder="seu@email.com" required value={form.email}
+                onChange={e=>f("email",e.target.value)}
+                className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500 transition-colors placeholder-slate-500"/>
+            </div>
+            <div>
+              <label className="text-slate-400 text-xs mb-1 block">Senha</label>
+              <input type="password" placeholder={mode==="register"?"Mínimo 6 caracteres":"••••••••"} required value={form.password}
+                onChange={e=>f("password",e.target.value)}
+                className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500 transition-colors placeholder-slate-500"/>
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/25">
+                <span className="text-rose-400 text-xs">⚠️ {error}</span>
+              </div>
+            )}
+
+            <button type="submit" disabled={loading}
+              className="w-full py-3 bg-orange-500 hover:bg-orange-400 disabled:opacity-60 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-orange-500/25">
+              {loading ? "Aguarde..." : mode==="login" ? "Entrar na minha conta" : "Criar minha conta grátis"}
+            </button>
+          </form>
+
+          {mode === "login" && (
+            <p className="text-center text-slate-500 text-xs mt-4">
+              Não tem conta?{" "}
+              <button onClick={()=>setMode("register")} className="text-orange-400 hover:text-orange-300 font-semibold">
+                Cadastre-se grátis
+              </button>
+            </p>
+          )}
+        </div>
+
+        {/* Demo hint */}
+        <p className="text-center text-slate-600 text-xs mt-4">
+          Seus dados ficam salvos localmente, por conta separada 🔒
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── FLOATING ACTION BUTTON (+ Receita) ──────────────────────────────────────
+function FABReceita({ onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ desc:"", value:"", cat:"Renda", date: new Date().toISOString().split("T")[0] });
+
+  const submit = () => {
+    if (!form.desc || !form.value || !form.date) return;
+    onAdd({ id: Date.now(), ...form, type:"receita", value: parseFloat(form.value) });
+    setForm({ desc:"", value:"", cat:"Renda", date: new Date().toISOString().split("T")[0] });
+    setOpen(false);
+  };
+
+  return (
+    <>
+      {/* FAB Button */}
+      <button onClick={()=>setOpen(true)}
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white shadow-2xl shadow-emerald-500/40 flex items-center justify-center text-2xl font-bold transition-all hover:scale-110 active:scale-95">
+        +
+      </button>
+
+      {/* Quick modal */}
+      {open && (
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold">↑</span>
+                <h3 className="text-white font-bold">Adicionar Receita</h3>
+              </div>
+              <button onClick={()=>setOpen(false)} className="text-slate-500 hover:text-slate-300 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700">×</button>
+            </div>
+
+            <div>
+              <label className="text-slate-400 text-xs mb-1 block">Descrição</label>
+              <input autoFocus type="text" placeholder="Ex: Salário, Freelance..." value={form.desc}
+                onChange={e=>setForm(p=>({...p,desc:e.target.value}))}
+                className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500"/>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-slate-400 text-xs mb-1 block">Valor (R$)</label>
+                <input type="number" placeholder="0,00" value={form.value}
+                  onChange={e=>setForm(p=>({...p,value:e.target.value}))}
+                  className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500"/>
+              </div>
+              <div>
+                <label className="text-slate-400 text-xs mb-1 block">Data</label>
+                <input type="date" value={form.date}
+                  onChange={e=>setForm(p=>({...p,date:e.target.value}))}
+                  className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500"/>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-slate-400 text-xs mb-1 block">Categoria</label>
+              <select value={form.cat} onChange={e=>setForm(p=>({...p,cat:e.target.value}))}
+                className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500">
+                {["Renda","Renda Extra","Investimentos","Freelance","Vendas","Outros"].map(c=><option key={c}>{c}</option>)}
+              </select>
+            </div>
+
+            {/* Quick amounts */}
+            <div>
+              <p className="text-slate-500 text-xs mb-2">Valores rápidos:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[500,1000,1500,2000,3000,5000].map(v=>(
+                  <button key={v} onClick={()=>setForm(p=>({...p,value:String(v)}))}
+                    className={`px-3 py-1 rounded-lg text-xs font-mono font-semibold transition-all ${
+                      form.value===String(v)
+                        ? "bg-emerald-500 text-white"
+                        : "bg-slate-700 text-slate-400 hover:bg-slate-600"
+                    }`}>
+                    R${v.toLocaleString("pt-BR")}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button onClick={submit}
+              className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold text-sm transition-colors shadow-lg shadow-emerald-500/20">
+              ✓ Adicionar Receita
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
+  const { user, login, register, logout } = useAuth();
   const [page, setPage] = useState("dashboard");
-  const [transactions, setTransactions] = useState(initialTransactions);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [accountMode, setAccountMode] = useState("pessoal");
+
+  // Per-user persistent transactions
+  const [transactions, setTransactionsRaw] = useState(() =>
+    user ? getUserData(user.email, "transactions", initialTransactions) : initialTransactions
+  );
+
+  useEffect(() => {
+    if (user) {
+      const saved = getUserData(user.email, "transactions", null);
+      setTransactionsRaw(saved !== null ? saved : initialTransactions);
+    }
+  }, [user?.email]);
+
+  const setTransactions = (val) => {
+    const next = typeof val === "function" ? val(transactions) : val;
+    setTransactionsRaw(next);
+    if (user) setUserData(user.email, "transactions", next);
+  };
+
+  const addReceita = (tx) => setTransactions(prev => [tx, ...prev]);
+
+  if (!user) {
+    return <AuthScreen onLogin={login} onRegister={register}/>;
+  }
 
   const navGroups = [
     {
@@ -2420,8 +2667,17 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-white flex" style={{fontFamily:"'DM Sans', system-ui, sans-serif"}}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+        * { box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+        body { margin: 0; }
+      `}</style>
+
       {/* Sidebar */}
-      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-slate-900/95 border-r border-slate-800 flex flex-col transition-transform duration-300 ${
+      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-72 sm:w-64 bg-slate-900 border-r border-slate-800 flex flex-col transition-transform duration-300 shadow-2xl lg:shadow-none ${
         sidebarOpen?"translate-x-0":"-translate-x-full lg:translate-x-0"
       }`}>
         {/* Logo */}
@@ -2468,19 +2724,26 @@ export default function App() {
         {/* User */}
         <div className="p-3 border-t border-slate-800">
           <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center text-xs font-bold">
-              JD
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-xs font-bold text-white">
+              {user.name ? user.name[0].toUpperCase() : "?"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-xs font-medium truncate">João Dalago</p>
-              <p className="text-slate-500 text-xs">Plano Pro ⭐</p>
+              <p className="text-white text-xs font-medium truncate">{user.name}</p>
+              <p className="text-slate-500 text-xs">{user.plan === "Pro" ? "Plano Pro ⭐" : "Plano Free"}</p>
             </div>
+            <button onClick={logout} title="Sair"
+              className="text-slate-600 hover:text-rose-400 transition-colors text-sm p-1 rounded-lg hover:bg-rose-500/10">
+              ⏻
+            </button>
           </div>
         </div>
       </aside>
 
       {/* Overlay mobile */}
       {sidebarOpen&&<div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={()=>setSidebarOpen(false)}/>}
+
+      {/* FAB — Adicionar Receita */}
+      <FABReceita onAdd={addReceita}/>
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -2490,8 +2753,8 @@ export default function App() {
             ☰
           </button>
           <AccountToggle mode={accountMode} setMode={setAccountMode} />
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center text-xs font-bold">
-            JD
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-xs font-bold text-white">
+            {user.name ? user.name[0].toUpperCase() : "?"}
           </div>
         </header>
 
@@ -2502,7 +2765,7 @@ export default function App() {
         </div>
 
         {/* Page content */}
-        <main className="flex-1 p-5 lg:p-8 overflow-y-auto relative">
+        <main className="flex-1 p-4 sm:p-5 lg:p-8 overflow-y-auto relative pb-24">
           <div className="max-w-5xl mx-auto">
             {pages[page]}
           </div>
