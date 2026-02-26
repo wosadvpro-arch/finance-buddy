@@ -41,9 +41,10 @@ function StatusDot({ status }) {
   );
 }
 
+// Card reads from CSS vars set by theme
 function Card({ children, className="" }) {
   return (
-    <div className={`bg-slate-800/70 border border-slate-700/60 rounded-2xl backdrop-blur-sm ${className}`}>
+    <div className={`rounded-2xl backdrop-blur-sm card-themed ${className}`}>
       {children}
     </div>
   );
@@ -171,7 +172,7 @@ function MonthPills({ selected, onSelect, multi=false, accentColor="orange" }) {
   };
   const c = colors[accentColor] || colors.orange;
   return (
-    <div className="flex flex-wrap gap-1.5 mt-2">
+    <div className="flex flex-wrap gap-1 mt-2">
       {MONTHS.map((m, i) => {
         const isActive = multi ? selected.includes(i) : selected === i;
         return (
@@ -193,7 +194,7 @@ function MonthPills({ selected, onSelect, multi=false, accentColor="orange" }) {
 
 // ─── PAGES ───────────────────────────────────────────────────────────────────
 
-function Dashboard({ transactions, accountMode, hideNumbers=false, onAddReceita, onAddDespesa }) {
+function Dashboard({ transactions, accountMode, userName="Usuário", onAddReceita, onAddDespesa }) {
   const now = new Date();
   const currentYear = now.getFullYear();
 
@@ -283,10 +284,10 @@ function Dashboard({ transactions, accountMode, hideNumbers=false, onAddReceita,
   const isPessoal   = accountMode === "pessoal";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
 
       {/* ── BANNER RESUMO FINANCEIRO ── */}
-      <div className={`flex items-center gap-4 rounded-2xl px-5 py-4 border ${
+      <div className={`flex items-center gap-3 rounded-2xl px-3 sm:px-5 py-3 sm:py-4 border overflow-hidden ${
         isPessoal
           ? "bg-orange-500/10 border-orange-500/20"
           : "bg-blue-500/10 border-blue-600/25"
@@ -301,27 +302,30 @@ function Dashboard({ transactions, accountMode, hideNumbers=false, onAddReceita,
         </div>
         {/* Text */}
         <div className="flex-1 min-w-0">
-          <p className="text-white font-bold text-sm leading-tight">
-            Resumo Financeiro {isPessoal ? "Pessoal" : "Empresarial"}: {mesAtual}/{anoAtual}
+          <p className="text-white font-bold text-xs sm:text-sm leading-tight truncate">
+            Resumo {isPessoal ? "Pessoal" : "Empresarial"}: {mesAtual}/{anoAtual}
           </p>
           <p className={`text-xs mt-0.5 ${isPessoal ? "text-orange-300/70" : "text-blue-300/70"}`}>
             Período: {primeiroDia} a {ultimoDia}
           </p>
         </div>
         {/* Saldo badge */}
-        <span className={`flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg ${
+        <span className={`flex-shrink-0 text-xs font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg max-w-[130px] truncate ${
           saldo >= 0
             ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
             : "bg-rose-500 text-white shadow-sm shadow-rose-500/30"
         }`}>
-          {hideNumbers ? (saldo >= 0 ? "Saldo +" : "Saldo −") : (saldo >= 0 ? `Saldo: ${fmt(saldo)}` : `Déficit: ${fmt(Math.abs(saldo))}`)}
+          {saldo >= 0 ? `Saldo: ${fmt(saldo)}` : `Déficit: ${fmt(Math.abs(saldo))}`}
         </span>
       </div>
 
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl sm:text-2xl font-bold text-white">Dashboard</h1>
+          <p className="text-slate-400 text-sm font-medium">
+            {new Date().getHours() < 12 ? "☀️ Bom dia" : new Date().getHours() < 18 ? "🌤️ Boa tarde" : "🌙 Boa noite"},
+          </p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white leading-tight">Olá, {userName}! 👋</h1>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${
               isPessoal
                 ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
@@ -329,8 +333,8 @@ function Dashboard({ transactions, accountMode, hideNumbers=false, onAddReceita,
             }`}>
               {isPessoal ? "👤 Pessoal" : "🏢 Empresarial"}
             </span>
+            <p className="text-slate-500 text-xs">{cfMonthName} {currentYear}</p>
           </div>
-          <p className="text-slate-400 text-sm mt-1">Visão geral das suas finanças — {cfMonthName} {currentYear}</p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
           <button onClick={onAddReceita}
@@ -375,20 +379,18 @@ function Dashboard({ transactions, accountMode, hideNumbers=false, onAddReceita,
       )}
 
       {/* ── KPI Cards estilo Mordomize ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <KpiCard
           label="Receitas no período"
           value={fmt(receitas)}
           pctChange={0.0}
-          hideNum={hideNumbers}
           sparkData={annualData.map(d=>d.receitas)}
           sparkColor="#10b981"
         />
         <KpiCard
           label="Despesas no período"
-          value={fmt(despesas)}
+          value={despesas > 0 ? `−${fmt(despesas)}` : fmt(despesas)}
           pctChange={0}
-          hideNum={hideNumbers}
           sparkData={annualData.map(d=>d.despesas)}
           sparkColor="#f43f5e"
           extra={despesas > 0 ? null : null}
@@ -397,14 +399,12 @@ function Dashboard({ transactions, accountMode, hideNumbers=false, onAddReceita,
         <KpiCard
           label="Saldo do período"
           value={fmt(saldo)}
-          hideNum={hideNumbers}
           pctChange={receitas > 0 ? parseFloat(((saldo/receitas)*100).toFixed(1)) : 0}
           sparkData={annualData.map(d=>d.liquido)}
           sparkColor={saldo>=0?"#10b981":"#f43f5e"}
         />
         <KpiCard
           label="Despesas/Receitas"
-          hideNum={hideNumbers}
           value={receitas > 0 ? `${((despesas/receitas)*100).toFixed(1)}%` : "—"}
           pctChange={0}
           sparkData={[]}
@@ -416,7 +416,7 @@ function Dashboard({ transactions, accountMode, hideNumbers=false, onAddReceita,
 
       {/* Empresarial extras */}
       {accountMode === "empresarial" && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <KpiCard label="Faturamento (Receitas)" value={fmt(receitas)} pctChange={0}
             sparkData={annualData.map(d=>d.receitas)} sparkColor="#3b82f6"/>
           <KpiCard label="Resultado Líquido" value={fmt(saldo)} pctChange={0}
@@ -503,7 +503,7 @@ function Dashboard({ transactions, accountMode, hideNumbers=false, onAddReceita,
           </div>
 
           {/* KPIs rápidos */}
-          <div className="grid grid-cols-3 gap-2 my-3">
+          <div className="grid grid-cols-3 gap-1.5 my-3">
             {[
               { label:"Total Entradas", value: fmt(cfData.reduce((s,d)=>s+d.entradas,0)), color:"text-emerald-400", bg:"bg-emerald-500/10 border-emerald-500/20" },
               { label:"Total Saídas",   value: fmt(cfData.reduce((s,d)=>s+d.saidas,0)),  color:"text-rose-400",    bg:"bg-rose-500/10 border-rose-500/20" },
@@ -521,9 +521,9 @@ function Dashboard({ transactions, accountMode, hideNumbers=false, onAddReceita,
               Nenhuma transação registrada em {cfMonthName}
             </div>
           ) : (
-          <div className="w-full overflow-hidden">
-          <ResponsiveContainer width="100%" height={240}>
-            <ComposedChart data={cfData} barGap={2} barCategoryGap="30%">
+          <div style={{width:"100%", overflowX:"hidden"}}>
+          <ResponsiveContainer width="99%" height={200}>
+            <ComposedChart data={cfData} margin={{left:0,right:4,top:4,bottom:0}} barGap={2} barCategoryGap="30%">
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false}/>
               <XAxis dataKey="dia" tick={{fill:"#64748b",fontSize:10}} axisLine={false} tickLine={false}
                 tickFormatter={d=>`${d}/${String(cfMonth+1).padStart(2,"0")}`}/>
@@ -596,9 +596,9 @@ function Dashboard({ transactions, accountMode, hideNumbers=false, onAddReceita,
             ))}
           </div>
 
-          <div className="w-full overflow-hidden">
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={filteredAnnual} barGap={3} barCategoryGap="25%">
+          <div style={{width:"100%", overflowX:"hidden"}}>
+          <ResponsiveContainer width="99%" height={200}>
+            <BarChart data={filteredAnnual} margin={{left:0,right:4,top:4,bottom:0}} barGap={3} barCategoryGap="25%">
               <defs>
                 <linearGradient id="gRec" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#10b981" stopOpacity={1}/>
@@ -673,7 +673,7 @@ function Dashboard({ transactions, accountMode, hideNumbers=false, onAddReceita,
                 </div>
               </div>
               <span className={`font-mono font-semibold ${t.type==="receita"?"text-emerald-400":"text-rose-400"}`}>
-                {t.type==="receita"?"+":"-"}{fmt(t.value)}
+                {t.type==="receita"?"+":"−"}{fmt(t.value)}
               </span>
             </div>
           ))}
@@ -785,8 +785,8 @@ function Transactions({ transactions, setTransactions }) {
                   <p className="text-slate-500 text-xs">{t.cat} · {fmtDate(t.date)}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className={`font-mono font-bold text-sm ${t.type==="receita"?"text-emerald-400":"text-rose-400"}`}>
-                    {t.type==="receita"?"+":"-"}{fmt(t.value)}
+                  <span className={`font-mono font-bold text-sm whitespace-nowrap ${t.type==="receita"?"text-emerald-400":"text-rose-400"}`}>
+                    {t.type==="receita"?"+":"−"}{fmt(t.value)}
                   </span>
                   {/* Edit / Delete — always visible on mobile, hover on desktop */}
                   <div className="flex gap-1">
@@ -933,7 +933,7 @@ function Goals() {
                     <p className="text-slate-400 text-sm">{fmt(g.current)} de {fmt(g.target)}</p>
                   </div>
                 </div>
-                <span className="text-2xl font-bold font-mono" style={{color:g.color}}>{p}%</span>
+                <span className="text-base sm:text-xl font-bold font-mono break-all" style={{color:g.color}}>{p}%</span>
               </div>
               <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-700"
@@ -1073,7 +1073,7 @@ function Reports({ transactions }) {
               <span className="text-slate-300 text-sm">{t.desc}</span>
               <div className="text-right">
                 <span className={`text-sm font-mono font-semibold ${t.type==="receita"?"text-emerald-400":"text-rose-400"}`}>
-                  {t.type==="receita"?"+":"-"}{fmt(t.value)}
+                  {t.type==="receita"?"+":"−"}{fmt(t.value)}
                 </span>
                 <p className="text-xs text-slate-500">{fmtDate(t.date)}</p>
               </div>
@@ -1222,7 +1222,7 @@ function ReceitasPage({ transactions, setTransactions }) {
         <button onClick={()=>{setEditId(null);setForm(emptyForm);setModal(true);}}
           className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-sm font-semibold transition-colors">+ Adicionar</button>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <KpiCard label="Total Receitas" value={fmt(total)} pctChange={0} sparkData={[]} sparkColor="#10b981"/>
         <KpiCard label="Maior entrada"  value={fmt(receitas.length?Math.max(...receitas.map(t=>t.value)):0)} pctChange={0} sparkData={[]} sparkColor="#34d399"/>
         <KpiCard label="Qtd. entradas"  value={`${receitas.length}`} pctChange={0} sparkData={[]} sparkColor="#6ee7b7"/>
@@ -1248,14 +1248,14 @@ function ReceitasPage({ transactions, setTransactions }) {
         {receitas.length===0 ? (
           <div className="flex flex-col items-center py-10 text-slate-600 gap-2"><span className="text-3xl">💰</span><p className="text-sm">Nenhuma receita ainda</p></div>
         ) : receitas.map(t=>(
-          <div key={t.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-700/20 transition-colors border-b border-slate-700/30 last:border-0 group">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-400 font-bold flex-shrink-0">↑</div>
+          <div key={t.id} className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-700/20 transition-colors border-b border-slate-700/30 last:border-0 group">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-400 font-bold flex-shrink-0 text-xs">↑</div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium truncate">{t.desc}</p>
+              <p className="text-white text-xs sm:text-sm font-medium truncate">{t.desc}</p>
               <p className="text-slate-500 text-xs">{t.cat} · {fmtDate(t.date)}</p>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-emerald-400 font-mono font-bold text-sm">+{fmt(t.value)}</span>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <span className="text-emerald-400 font-mono font-bold text-xs sm:text-sm whitespace-nowrap">+{fmt(t.value)}</span>
               <div className="flex gap-1">
                 <button onClick={()=>openEdit(t)} className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-blue-500/20 text-slate-400 hover:text-blue-400 flex items-center justify-center text-xs">✏️</button>
                 <button onClick={()=>setTransactions(p=>p.filter(x=>x.id!==t.id))} className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 flex items-center justify-center text-xs">🗑</button>
@@ -1360,7 +1360,7 @@ function DespesasPage({ transactions, setTransactions }) {
         <button onClick={()=>{setEditId(null);setForm(emptyForm);setModal(true);}}
           className="px-4 py-2 bg-rose-500 hover:bg-rose-400 text-white rounded-xl text-sm font-semibold transition-colors">+ Adicionar</button>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <KpiCard label="Total Despesas" value={fmt(total)} pctChange={0} sparkData={[]} sparkColor="#f43f5e"/>
         <KpiCard label="Maior gasto"    value={fmt(despesas.length?Math.max(...despesas.map(t=>t.value)):0)} pctChange={0} sparkData={[]} sparkColor="#fb7185"/>
         <KpiCard label="Qtd. despesas"  value={`${despesas.length}`} pctChange={0} sparkData={[]} sparkColor="#fda4af"/>
@@ -1393,7 +1393,7 @@ function DespesasPage({ transactions, setTransactions }) {
               <p className="text-slate-500 text-xs">{t.cat} · {fmtDate(t.date)}</p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-rose-400 font-mono font-bold text-sm">-{fmt(t.value)}</span>
+              <span className="text-rose-400 font-mono font-bold text-sm whitespace-nowrap">−{fmt(t.value)}</span>
               <div className="flex gap-1">
                 <button onClick={()=>openEdit(t)} className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-blue-500/20 text-slate-400 hover:text-blue-400 flex items-center justify-center text-xs">✏️</button>
                 <button onClick={()=>setTransactions(p=>p.filter(x=>x.id!==t.id))} className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 flex items-center justify-center text-xs">🗑</button>
@@ -1837,13 +1837,17 @@ function VeiculosPage() {
 // ════════════════════════════════════════════════════════
 // PERFIL PAGE
 // ════════════════════════════════════════════════════════
-function PerfilPage() {
+function PerfilPage({ userName="Usuário", setUserName=()=>{} }) {
   const [form, setForm] = useState({
-    name:"João Dalago", email:"joao@email.com", phone:"(11) 99999-8888",
-    cpf:"000.000.000-00", nascimento:"1990-05-15", renda:"8500",
+    name: userName, email:"", phone:"",
+    cpf:"", nascimento:"", renda:"",
   });
   const [saved, setSaved] = useState(false);
-  const save = () => { setSaved(true); setTimeout(()=>setSaved(false),2500); };
+  const save = () => {
+    if (form.name.trim()) setUserName(form.name.trim());
+    setSaved(true);
+    setTimeout(()=>setSaved(false),2500);
+  };
 
   return (
     <div className="space-y-5">
@@ -1950,7 +1954,7 @@ function CartaoVisual({ cartao, selected, onClick }) {
       selected ? "ring-2 ring-white/30 scale-105" : "hover:scale-102 opacity-80 hover:opacity-100"
     }`}>
       {/* Card face */}
-      <div className="rounded-xl p-5 relative overflow-hidden h-44 flex flex-col justify-between"
+      <div className="rounded-xl p-4 relative overflow-hidden h-40 flex flex-col justify-between"
         style={{background:`linear-gradient(135deg, ${cartao.cor1}, ${cartao.cor2})`}}>
         {/* Decorative circles */}
         <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-20"
@@ -1961,7 +1965,7 @@ function CartaoVisual({ cartao, selected, onClick }) {
         <div className="flex items-start justify-between z-10">
           <div>
             <p className="text-white/60 text-xs font-medium">{cartao.banco}</p>
-            <p className="text-white font-bold text-sm mt-0.5">{cartao.nome}</p>
+            <p className="text-white font-bold text-xs mt-0.5 truncate max-w-[120px]">{cartao.nome}</p>
           </div>
           <span className="text-2xl">{cartao.emoji}</span>
         </div>
@@ -2008,8 +2012,7 @@ function CartaoVisual({ cartao, selected, onClick }) {
   );
 }
 
-function CartoesPage() {
-  const [cartoes, setCartoes] = useState(initialCartoes);
+function CartoesPage({ cartoes=[], setCartoes=()=>{} }) {
   const [selId, setSelId] = useState(null);
   const [tab, setTab] = useState("fatura");
   const [modal, setModal] = useState(false);
@@ -2191,7 +2194,7 @@ function CartoesPage() {
       </div>
 
       {/* Summary KPIs */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2 text-sm">
         {[
           {
             label:"Fatura Atual",
@@ -2233,7 +2236,7 @@ function CartoesPage() {
               <span>{k.icon}</span>
               <p className="text-slate-400 text-xs">{k.label}</p>
             </div>
-            <p className={`text-xl font-bold font-mono ${k.color}`}>{k.value}</p>
+            <p className={`text-sm sm:text-base font-bold font-mono break-all ${k.color}`}>{k.value}</p>
             <p className="text-slate-500 text-xs mt-0.5">{k.sub}</p>
           </div>
         ))}
@@ -2590,7 +2593,7 @@ function Admin() {
 // ─── ACCOUNT TYPE TOGGLE ─────────────────────────────────────────────────────
 function AccountToggle({ mode, setMode }) {
   return (
-    <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-xl p-1 gap-0.5 min-w-0 max-w-[200px]">
+    <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-xl p-0.5 gap-0.5 min-w-0 max-w-[190px] sm:max-w-none">
       <button
         onClick={() => setMode("pessoal")}
         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
@@ -2843,12 +2846,13 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [accountMode, setAccountMode] = useState("pessoal");
   const [transactions, setTransactions] = useState([]);
+  const [cartoes, setCartoes] = useState([]);
   const [fabOpen, setFabOpen] = useState(false);
   const [despesaOpen, setDespesaOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
-  const [hideNumbers, setHideNumbers] = useState(false);
+  const [userName, setUserName] = useState("Usuário");
 
-  const user = { name: "Usuário", plan: "Pro" };
+  const user = { name: userName, plan: "Pro" };
   const logout = () => {};
   const addReceita = (tx) => setTransactions(prev => [tx, ...prev]);
   const addDespesa  = (tx) => setTransactions(prev => [tx, ...prev]);
@@ -2874,46 +2878,88 @@ export default function App() {
     ]}
   ];
 
+  // Compute card expenses as transactions for Dashboard
+  const cardTxs = cartoes.flatMap(c => (c.gastos||[]).map(g => ({
+    id: "card_"+g.id, desc: g.desc, type:"despesa", cat: g.cat||"Cartão",
+    value: g.valor, date: g.data||new Date().toISOString().split("T")[0],
+    source:"cartao", cartaoNome: c.nome
+  })));
+  const allTransactions = [...transactions, ...cardTxs];
+
   const pages = {
-    dashboard:    <Dashboard transactions={transactions} accountMode={accountMode} hideNumbers={hideNumbers} onAddReceita={()=>setFabOpen(true)} onAddDespesa={()=>setDespesaOpen(true)}/>,
+    dashboard:    <Dashboard transactions={allTransactions} accountMode={accountMode} userName={userName} onAddReceita={()=>setFabOpen(true)} onAddDespesa={()=>setDespesaOpen(true)}/>,
     receitas:     <ReceitasPage transactions={transactions} setTransactions={setTransactions}/>,
     despesas:     <DespesasPage transactions={transactions} setTransactions={setTransactions}/>,
-    transactions: <Transactions transactions={transactions} setTransactions={setTransactions}/>,
-    cartoes:      <CartoesPage/>,
+    transactions: <Transactions transactions={allTransactions} setTransactions={setTransactions}/>,
+    cartoes:      <CartoesPage cartoes={cartoes} setCartoes={setCartoes}/>,
     dividas:      <DividasPage/>,
     categories:   <CategoriasPage/>,
     reports:      <Reports transactions={transactions}/>,
     goals:        <Goals/>,
     mercado:      <MercadoPage/>,
     veiculos:     <VeiculosPage/>,
-    perfil:       <PerfilPage/>,
+    perfil:       <PerfilPage userName={userName} setUserName={setUserName}/>,
     plans:        <Planos/>,
     admin:        <Admin/>,
   };
 
   const dm = darkMode;
-  const bgApp   = dm ? "bg-slate-900"   : "bg-gray-100";
-  const bgSide  = dm ? "bg-slate-900"   : "bg-white";
-  const bdSide  = dm ? "border-slate-800" : "border-gray-200";
-  const bgHead  = dm ? "bg-slate-900"   : "bg-white";
-  const txtBase = dm ? "text-white"     : "text-gray-900";
+  // ── Semantic color system ─────────────────────────────────
+  const T = {
+    // Backgrounds
+    bgApp:    dm ? "#0f172a" : "#f0f4f8",
+    bgSide:   dm ? "#0f172a" : "#ffffff",
+    bgCard:   dm ? "rgba(30,41,59,0.8)" : "#ffffff",
+    bgInput:  dm ? "rgba(51,65,85,0.5)" : "#f8fafc",
+    bgHover:  dm ? "rgba(51,65,85,0.4)" : "#f1f5f9",
+    // Borders
+    bdSide:   dm ? "#1e293b" : "#e2e8f0",
+    bdCard:   dm ? "rgba(100,116,139,0.3)" : "#e2e8f0",
+    bdInput:  dm ? "#334155" : "#cbd5e1",
+    // Text
+    txtPrimary: dm ? "#f1f5f9" : "#0f172a",
+    txtSecond:  dm ? "#94a3b8" : "#475569",
+    txtMuted:   dm ? "#64748b" : "#94a3b8",
+    // Nav active
+    navBg:    dm ? "bg-slate-700/50 hover:bg-slate-700/80" : "bg-slate-100 hover:bg-slate-200",
+  };
+  const bgApp   = dm ? "bg-[#0f172a]" : "bg-[#f0f4f8]";
+  const bgSide  = dm ? "bg-[#0f172a]" : "bg-white";
+  const bdSide  = dm ? "border-[#1e293b]" : "border-[#e2e8f0]";
+  const bgHead  = dm ? "bg-[#0f172a]" : "bg-white";
+  const txtBase = dm ? "text-slate-100" : "text-slate-900";
 
   return (
     <div className={`min-h-screen ${bgApp} ${txtBase} flex`} style={{fontFamily:"'DM Sans', system-ui, sans-serif"}}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
-        * { box-sizing: border-box; }
-        .max-w-5xl { overflow-x: hidden; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
-        body { margin: 0; }
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.5); }
-        select option { background: ${dm ? "#1e293b" : "#ffffff"}; color: ${dm ? "white" : "#111"}; }
-      `}</style>
+      <style>{[
+        "@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');",
+        "* { box-sizing: border-box; }",
+        "html, body { margin: 0; overflow-x: hidden; }",
+        "::-webkit-scrollbar { width: 4px; }",
+        "::-webkit-scrollbar-track { background: transparent; }",
+        "::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }",
+        "input[type=\"date\"]::-webkit-calendar-picker-indicator { filter: invert(" + (dm ? "0.5" : "0.3") + "); }",
+        "select option { background: " + (dm ? "#1e293b" : "#ffffff") + "; color: " + (dm ? "white" : "#111") + "; }",
+        ".card-themed { background: " + T.bgCard + "; border: 1px solid " + T.bdCard + "; }",
+        !dm ? [
+          ".text-slate-400 { color: #475569 !important; }",
+          ".text-slate-500 { color: #64748b !important; }",
+          ".text-slate-600 { color: #475569 !important; }",
+          ".text-white { color: #0f172a !important; }",
+          ".text-slate-300 { color: #334155 !important; }",
+          ".text-slate-200 { color: #1e293b !important; }",
+          ".bg-slate-700, .bg-slate-700\/50, .bg-slate-700\/60 { background: #e2e8f0 !important; }",
+          ".bg-slate-800, .bg-slate-800\/70, .bg-slate-800\/80 { background: #f8fafc !important; }",
+          ".bg-slate-900 { background: #ffffff !important; }",
+          ".border-slate-600, .border-slate-700, .border-slate-800 { border-color: #cbd5e1 !important; }",
+          ".bg-black\/50 { background: rgba(0,0,0,0.25) !important; }",
+          ".hover\\:bg-slate-600:hover { background: #cbd5e1 !important; }",
+          ".hover\\:bg-slate-700:hover { background: #e2e8f0 !important; }",
+        ].join("\n") : "",
+      ].join("\n")}</style>
 
       {/* Sidebar */}
-      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 ${bgSide} border-r ${bdSide} flex flex-col transition-transform duration-300 shadow-2xl lg:shadow-none ${
+      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-60 lg:w-64 ${bgSide} border-r ${bdSide} flex flex-col transition-transform duration-300 shadow-2xl lg:shadow-none ${
         sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       }`}>
         <div className={`p-4 border-b ${bdSide} space-y-3`}>
@@ -2948,16 +2994,12 @@ export default function App() {
         <div className={`p-3 border-t ${bdSide}`}>
           <div className="flex items-center gap-2 px-2 py-2">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-              {user.name[0]}
+              {userName[0]?.toUpperCase() || "U"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className={`text-xs font-medium truncate ${dm?"text-white":"text-gray-900"}`}>{user.name}</p>
+              <p className={`text-xs font-medium truncate ${dm?"text-white":"text-gray-900"}`}>{userName}</p>
               <p className="text-slate-500 text-xs">{user.plan==="Pro"?"Plano Pro ⭐":"Plano Free"}</p>
             </div>
-            <button onClick={()=>setHideNumbers(h=>!h)} title={hideNumbers?"Mostrar":"Ocultar"}
-              className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-colors ${hideNumbers?"bg-amber-500/20 text-amber-400":"text-slate-500 hover:text-white hover:bg-slate-700"}`}>
-              {hideNumbers?"🙈":"👁"}
-            </button>
             <button onClick={()=>setDarkMode(d=>!d)} title={darkMode?"Modo Claro":"Modo Escuro"}
               className="w-7 h-7 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 flex items-center justify-center text-xs transition-colors">
               {darkMode?"☀️":"🌙"}
@@ -2971,22 +3013,15 @@ export default function App() {
       <FABReceita onAdd={addReceita} open={fabOpen} setOpen={setFabOpen} onDespesaClick={()=>setDespesaOpen(true)}/>
       <AddDespesaModal onAdd={addDespesa} open={despesaOpen} setOpen={setDespesaOpen}/>
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
         <header className={`lg:hidden flex items-center justify-between px-3 py-3 border-b ${bdSide} ${bgHead} sticky top-0 z-20 gap-2`}>
           <button onClick={()=>setSidebarOpen(true)} className="text-slate-400 hover:text-white p-2 flex-shrink-0">☰</button>
           <AccountToggle mode={accountMode} setMode={setAccountMode}/>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button onClick={()=>setHideNumbers(h=>!h)}
-              title={hideNumbers?"Mostrar valores":"Ocultar valores"}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-colors ${hideNumbers?"bg-amber-500/20 text-amber-400":"bg-slate-700 text-slate-400 hover:text-white"}`}>
-              {hideNumbers?"🙈":"👁"}
-            </button>
-            <button onClick={()=>setDarkMode(d=>!d)}
-              title={darkMode?"Modo Claro":"Modo Escuro"}
-              className="w-8 h-8 rounded-lg bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm transition-colors">
-              {darkMode?"☀️":"🌙"}
-            </button>
-          </div>
+          <button onClick={()=>setDarkMode(d=>!d)}
+            title={darkMode?"Modo Claro":"Modo Escuro"}
+            className="w-8 h-8 rounded-lg bg-slate-700/60 text-slate-400 hover:text-white flex items-center justify-center text-sm transition-colors flex-shrink-0">
+            {darkMode?"☀️":"🌙"}
+          </button>
         </header>
 
         <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -2994,10 +3029,7 @@ export default function App() {
           <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-violet-500/5 rounded-full blur-3xl translate-y-1/3"/>
         </div>
 
-        <main className="flex-1 p-3 sm:p-5 lg:p-8 overflow-y-auto relative pb-10 overflow-x-hidden">
-          <style>{hideNumbers ? `
-            .hide-num { filter: blur(6px); user-select: none; pointer-events: none; }
-          ` : ''}</style>
+        <main className="flex-1 p-2 sm:p-5 lg:p-8 overflow-y-auto relative pb-8 overflow-x-hidden">
           <div className="max-w-5xl mx-auto">
             {pages[page]}
           </div>
