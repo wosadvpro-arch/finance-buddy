@@ -193,7 +193,7 @@ function MonthPills({ selected, onSelect, multi=false, accentColor="orange" }) {
 
 // ─── PAGES ───────────────────────────────────────────────────────────────────
 
-function Dashboard({ transactions, accountMode, onAddReceita, onAddDespesa }) {
+function Dashboard({ transactions, accountMode, hideNumbers=false, onAddReceita, onAddDespesa }) {
   const now = new Date();
   const currentYear = now.getFullYear();
 
@@ -297,7 +297,7 @@ function Dashboard({ transactions, accountMode, onAddReceita, onAddDespesa }) {
             ? "bg-orange-500 shadow-lg shadow-orange-500/40"
             : "bg-blue-600 shadow-lg shadow-blue-600/40"
         }`}>
-          {isPessoal ? "ℹ️" : "🏢"}
+          {isPessoal ? "💰" : "🏢"}
         </div>
         {/* Text */}
         <div className="flex-1 min-w-0">
@@ -311,12 +311,10 @@ function Dashboard({ transactions, accountMode, onAddReceita, onAddDespesa }) {
         {/* Saldo badge */}
         <span className={`flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg ${
           saldo >= 0
-            ? isPessoal
-              ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
-              : "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
+            ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
             : "bg-rose-500 text-white shadow-sm shadow-rose-500/30"
         }`}>
-          {saldo >= 0 ? "Saldo Positivo" : "Saldo Negativo"}
+          {hideNumbers ? (saldo >= 0 ? "Saldo +" : "Saldo −") : (saldo >= 0 ? `Saldo: ${fmt(saldo)}` : `Déficit: ${fmt(Math.abs(saldo))}`)}
         </span>
       </div>
 
@@ -382,6 +380,7 @@ function Dashboard({ transactions, accountMode, onAddReceita, onAddDespesa }) {
           label="Receitas no período"
           value={fmt(receitas)}
           pctChange={0.0}
+          hideNum={hideNumbers}
           sparkData={annualData.map(d=>d.receitas)}
           sparkColor="#10b981"
         />
@@ -389,6 +388,7 @@ function Dashboard({ transactions, accountMode, onAddReceita, onAddDespesa }) {
           label="Despesas no período"
           value={fmt(despesas)}
           pctChange={0}
+          hideNum={hideNumbers}
           sparkData={annualData.map(d=>d.despesas)}
           sparkColor="#f43f5e"
           extra={despesas > 0 ? null : null}
@@ -397,12 +397,14 @@ function Dashboard({ transactions, accountMode, onAddReceita, onAddDespesa }) {
         <KpiCard
           label="Saldo do período"
           value={fmt(saldo)}
+          hideNum={hideNumbers}
           pctChange={receitas > 0 ? parseFloat(((saldo/receitas)*100).toFixed(1)) : 0}
           sparkData={annualData.map(d=>d.liquido)}
           sparkColor={saldo>=0?"#10b981":"#f43f5e"}
         />
         <KpiCard
           label="Despesas/Receitas"
+          hideNum={hideNumbers}
           value={receitas > 0 ? `${((despesas/receitas)*100).toFixed(1)}%` : "—"}
           pctChange={0}
           sparkData={[]}
@@ -2009,20 +2011,96 @@ function CartaoVisual({ cartao, selected, onClick }) {
 function CartoesPage() {
   const [cartoes, setCartoes] = useState(initialCartoes);
   const [selId, setSelId] = useState(null);
-  const [tab, setTab] = useState("fatura"); // fatura | gastos | info
+  const [tab, setTab] = useState("fatura");
   const [modal, setModal] = useState(false);
+  const [addCardModal, setAddCardModal] = useState(false);
   const [novoGasto, setNovoGasto] = useState({desc:"", cat:"Alimentação", valor:"", data:""});
+  const emptyCard = { nome:"", bandeira:"Visa", limite:"", vencimento:"", fechamento:"", cor:"#6366f1" };
+  const [novoCartao, setNovoCartao] = useState(emptyCard);
+
+  const addCard = () => {
+    if (!novoCartao.nome || !novoCartao.limite || !novoCartao.vencimento) return;
+    const c = {
+      id: Date.now(),
+      nome: novoCartao.nome,
+      bandeira: novoCartao.bandeira,
+      numero: "•••• •••• •••• " + String(Date.now()).slice(-4),
+      limite: parseFloat(novoCartao.limite),
+      usado: 0,
+      fatura_atual: 0,
+      fatura_anterior: 0,
+      vencimento: parseInt(novoCartao.vencimento),
+      fechamento: parseInt(novoCartao.fechamento) || parseInt(novoCartao.vencimento) - 7,
+      cor: novoCartao.cor,
+      gastos: [],
+    };
+    setCartoes(prev => [...prev, c]);
+    setSelId(c.id);
+    setNovoCartao(emptyCard);
+    setAddCardModal(false);
+  };
 
   const cartao = cartoes.find(c=>c.id===selId) || cartoes[0] || null;
+
+  const AddCardButton = () => (
+    <button onClick={()=>setAddCardModal(true)}
+      className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-sm font-semibold transition-colors">
+      + Adicionar Cartão
+    </button>
+  );
+
   if (!cartao) return (
     <div className="space-y-5">
-      <div><h1 className="text-2xl font-bold text-white">Cartões</h1>
-        <p className="text-slate-400 text-sm mt-1">Gerencie seus cartões e faturas</p></div>
-      <div className="flex flex-col items-center justify-center py-16 rounded-2xl border-2 border-dashed border-slate-700 text-center space-y-3">
+      <div className="flex items-center justify-between">
+        <div><h1 className="text-xl sm:text-2xl font-bold text-white">Cartões</h1>
+          <p className="text-slate-400 text-sm">Gerencie seus cartões e faturas</p></div>
+        <AddCardButton/>
+      </div>
+      <div className="flex flex-col items-center justify-center py-16 rounded-2xl border-2 border-dashed border-slate-700 text-center space-y-4">
         <span className="text-4xl">💳</span>
         <p className="text-white font-semibold">Nenhum cartão cadastrado</p>
-        <p className="text-slate-500 text-sm">Adicione seus cartões para controlar faturas</p>
+        <p className="text-slate-500 text-sm">Adicione seu primeiro cartão para controlar faturas</p>
+        <AddCardButton/>
       </div>
+      {addCardModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-white font-bold">Adicionar Cartão</h2>
+              <button onClick={()=>setAddCardModal(false)} className="text-slate-500 hover:text-slate-300 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700 text-xl">×</button>
+            </div>
+            {[{label:"Nome do cartão",key:"nome",ph:"Ex: Nubank, Itaú Gold"},{label:"Limite (R$)",key:"limite",type:"number",ph:"5000"},{label:"Vencimento (dia)",key:"vencimento",type:"number",ph:"10"},{label:"Fechamento (dia)",key:"fechamento",type:"number",ph:"3"}].map(f=>(
+              <div key={f.key}>
+                <label className="text-slate-400 text-xs mb-1 block">{f.label}</label>
+                <input type={f.type||"text"} placeholder={f.ph} value={novoCartao[f.key]}
+                  onChange={e=>setNovoCartao(p=>({...p,[f.key]:e.target.value}))}
+                  className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
+              </div>
+            ))}
+            <div>
+              <label className="text-slate-400 text-xs mb-1 block">Bandeira</label>
+              <select value={novoCartao.bandeira} onChange={e=>setNovoCartao(p=>({...p,bandeira:e.target.value}))}
+                className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500">
+                {["Visa","Mastercard","Elo","Amex","Hipercard"].map(b=><option key={b}>{b}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-slate-400 text-xs mb-1 block">Cor do cartão</label>
+              <div className="flex gap-2 flex-wrap">
+                {["#6366f1","#10b981","#f97316","#3b82f6","#ec4899","#8b5cf6","#14b8a6","#f59e0b"].map(cor=>(
+                  <button key={cor} onClick={()=>setNovoCartao(p=>({...p,cor}))}
+                    className={`w-8 h-8 rounded-lg transition-all ${novoCartao.cor===cor?"ring-2 ring-white scale-110":""}`}
+                    style={{background:cor}}/>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={()=>setAddCardModal(false)} className="flex-1 py-2.5 bg-slate-700 text-slate-300 rounded-xl text-sm">Cancelar</button>
+              <button onClick={addCard} className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-sm font-semibold">Adicionar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
   const usoPct = Math.round(((cartao.usado||0) / (cartao.limite||1)) * 100);
@@ -2052,16 +2130,58 @@ function CartoesPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-white">Cartões</h1>
-          <p className="text-slate-400 text-sm mt-1">Gerencie seus cartões e faturas</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Cartões</h1>
+          <p className="text-slate-400 text-sm">Gerencie seus cartões e faturas</p>
         </div>
-        <button onClick={()=>setModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-sm font-medium transition-colors">
-          + Lançar Gasto
-        </button>
+        <div className="flex gap-2">
+          <AddCardButton/>
+          <button onClick={()=>setModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-sm font-medium transition-colors">
+            + Lançar Gasto
+          </button>
+        </div>
       </div>
+      {addCardModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-white font-bold">Adicionar Cartão</h2>
+              <button onClick={()=>setAddCardModal(false)} className="text-slate-500 hover:text-slate-300 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700 text-xl">×</button>
+            </div>
+            {[{label:"Nome do cartão",key:"nome",ph:"Ex: Nubank, Itaú Gold"},{label:"Limite (R$)",key:"limite",type:"number",ph:"5000"},{label:"Vencimento (dia)",key:"vencimento",type:"number",ph:"10"},{label:"Fechamento (dia)",key:"fechamento",type:"number",ph:"3"}].map(f=>(
+              <div key={f.key}>
+                <label className="text-slate-400 text-xs mb-1 block">{f.label}</label>
+                <input type={f.type||"text"} placeholder={f.ph} value={novoCartao[f.key]}
+                  onChange={e=>setNovoCartao(p=>({...p,[f.key]:e.target.value}))}
+                  className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
+              </div>
+            ))}
+            <div>
+              <label className="text-slate-400 text-xs mb-1 block">Bandeira</label>
+              <select value={novoCartao.bandeira} onChange={e=>setNovoCartao(p=>({...p,bandeira:e.target.value}))}
+                className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500">
+                {["Visa","Mastercard","Elo","Amex","Hipercard"].map(b=><option key={b}>{b}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-slate-400 text-xs mb-1 block">Cor do cartão</label>
+              <div className="flex gap-2 flex-wrap">
+                {["#6366f1","#10b981","#f97316","#3b82f6","#ec4899","#8b5cf6","#14b8a6","#f59e0b"].map(cor=>(
+                  <button key={cor} onClick={()=>setNovoCartao(p=>({...p,cor}))}
+                    className={`w-8 h-8 rounded-lg transition-all ${novoCartao.cor===cor?"ring-2 ring-white scale-110":""}`}
+                    style={{background:cor}}/>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={()=>setAddCardModal(false)} className="flex-1 py-2.5 bg-slate-700 text-slate-300 rounded-xl text-sm">Cancelar</button>
+              <button onClick={addCard} className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-sm font-semibold">Adicionar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Cards visual row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
@@ -2071,7 +2191,7 @@ function CartoesPage() {
       </div>
 
       {/* Summary KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {[
           {
             label:"Fatura Atual",
@@ -2470,7 +2590,7 @@ function Admin() {
 // ─── ACCOUNT TYPE TOGGLE ─────────────────────────────────────────────────────
 function AccountToggle({ mode, setMode }) {
   return (
-    <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl p-1 gap-1 min-w-0">
+    <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-xl p-1 gap-0.5 min-w-0 max-w-[200px]">
       <button
         onClick={() => setMode("pessoal")}
         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
@@ -2627,28 +2747,7 @@ function FABReceita({ onAdd, open, setOpen, onDespesaClick }) {
 
   return (
     <>
-      {/* FAB Buttons — stacked */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 items-end">
-        {/* Despesa FAB — shows on hover/always */}
-        <div className="flex items-center gap-2 group">
-          <span className="bg-slate-800 text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg border border-slate-700 whitespace-nowrap">
-            Despesa
-          </span>
-          <button onClick={onDespesaClick} className="w-12 h-12 rounded-full bg-rose-500 hover:bg-rose-400 text-white shadow-xl shadow-rose-500/30 flex items-center justify-center text-xl font-bold transition-all hover:scale-110 active:scale-95">
-            −
-          </button>
-        </div>
-        {/* Receita FAB */}
-        <div className="flex items-center gap-2 group">
-          <span className="bg-slate-800 text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg border border-slate-700 whitespace-nowrap">
-            Receita
-          </span>
-          <button onClick={()=>setOpen(true)}
-            className="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white shadow-2xl shadow-emerald-500/40 flex items-center justify-center text-2xl font-bold transition-all hover:scale-110 active:scale-95">
-            +
-          </button>
-        </div>
-      </div>
+      {/* FAB buttons removed — use header buttons or page buttons instead */}
 
       {/* Quick modal */}
       {open && (
@@ -2746,6 +2845,8 @@ export default function App() {
   const [transactions, setTransactions] = useState([]);
   const [fabOpen, setFabOpen] = useState(false);
   const [despesaOpen, setDespesaOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
+  const [hideNumbers, setHideNumbers] = useState(false);
 
   const user = { name: "Usuário", plan: "Pro" };
   const logout = () => {};
@@ -2774,7 +2875,7 @@ export default function App() {
   ];
 
   const pages = {
-    dashboard:    <Dashboard transactions={transactions} accountMode={accountMode} onAddReceita={()=>setFabOpen(true)} onAddDespesa={()=>setDespesaOpen(true)}/>,
+    dashboard:    <Dashboard transactions={transactions} accountMode={accountMode} hideNumbers={hideNumbers} onAddReceita={()=>setFabOpen(true)} onAddDespesa={()=>setDespesaOpen(true)}/>,
     receitas:     <ReceitasPage transactions={transactions} setTransactions={setTransactions}/>,
     despesas:     <DespesasPage transactions={transactions} setTransactions={setTransactions}/>,
     transactions: <Transactions transactions={transactions} setTransactions={setTransactions}/>,
@@ -2790,8 +2891,15 @@ export default function App() {
     admin:        <Admin/>,
   };
 
+  const dm = darkMode;
+  const bgApp   = dm ? "bg-slate-900"   : "bg-gray-100";
+  const bgSide  = dm ? "bg-slate-900"   : "bg-white";
+  const bdSide  = dm ? "border-slate-800" : "border-gray-200";
+  const bgHead  = dm ? "bg-slate-900"   : "bg-white";
+  const txtBase = dm ? "text-white"     : "text-gray-900";
+
   return (
-    <div className="min-h-screen bg-slate-900 text-white flex" style={{fontFamily:"'DM Sans', system-ui, sans-serif"}}>
+    <div className={`min-h-screen ${bgApp} ${txtBase} flex`} style={{fontFamily:"'DM Sans', system-ui, sans-serif"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
         * { box-sizing: border-box; }
@@ -2801,14 +2909,14 @@ export default function App() {
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
         body { margin: 0; }
         input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.5); }
-        select option { background: #1e293b; }
+        select option { background: ${dm ? "#1e293b" : "#ffffff"}; color: ${dm ? "white" : "#111"}; }
       `}</style>
 
       {/* Sidebar */}
-      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-72 sm:w-64 bg-slate-900 border-r border-slate-800 flex flex-col transition-transform duration-300 shadow-2xl lg:shadow-none ${
+      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 ${bgSide} border-r ${bdSide} flex flex-col transition-transform duration-300 shadow-2xl lg:shadow-none ${
         sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       }`}>
-        <div className="p-4 border-b border-slate-800 space-y-3">
+        <div className={`p-4 border-b ${bdSide} space-y-3`}>
           <div className="flex items-center gap-3">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-sm ${
               accountMode==="pessoal" ? "bg-gradient-to-br from-orange-400 to-orange-600" : "bg-gradient-to-br from-blue-400 to-blue-600"
@@ -2826,7 +2934,7 @@ export default function App() {
         <nav className="flex-1 p-3 overflow-y-auto space-y-4">
           {navGroups.map((group,gi)=>(
             <div key={gi}>
-              {group.label && <p className="text-slate-600 text-xs font-semibold uppercase tracking-wider px-3 mb-1.5">{group.label}</p>}
+              {group.label && <p className={`text-xs font-semibold uppercase tracking-wider px-3 mb-1.5 ${dm?"text-slate-600":"text-gray-400"}`}>{group.label}</p>}
               <div className="space-y-0.5">
                 {group.items.map(n=>(
                   <NavItem key={n.id} {...n} active={page===n.id} mode={accountMode}
@@ -2837,15 +2945,23 @@ export default function App() {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-slate-800">
-          <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-xs font-bold text-white">
+        <div className={`p-3 border-t ${bdSide}`}>
+          <div className="flex items-center gap-2 px-2 py-2">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
               {user.name[0]}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-xs font-medium truncate">{user.name}</p>
+              <p className={`text-xs font-medium truncate ${dm?"text-white":"text-gray-900"}`}>{user.name}</p>
               <p className="text-slate-500 text-xs">{user.plan==="Pro"?"Plano Pro ⭐":"Plano Free"}</p>
             </div>
+            <button onClick={()=>setHideNumbers(h=>!h)} title={hideNumbers?"Mostrar":"Ocultar"}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-colors ${hideNumbers?"bg-amber-500/20 text-amber-400":"text-slate-500 hover:text-white hover:bg-slate-700"}`}>
+              {hideNumbers?"🙈":"👁"}
+            </button>
+            <button onClick={()=>setDarkMode(d=>!d)} title={darkMode?"Modo Claro":"Modo Escuro"}
+              className="w-7 h-7 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 flex items-center justify-center text-xs transition-colors">
+              {darkMode?"☀️":"🌙"}
+            </button>
           </div>
         </div>
       </aside>
@@ -2855,12 +2971,21 @@ export default function App() {
       <FABReceita onAdd={addReceita} open={fabOpen} setOpen={setFabOpen} onDespesaClick={()=>setDespesaOpen(true)}/>
       <AddDespesaModal onAdd={addDespesa} open={despesaOpen} setOpen={setDespesaOpen}/>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="lg:hidden flex items-center justify-between px-3 py-3 border-b border-slate-800 bg-slate-900 sticky top-0 z-20 gap-2">
-          <button onClick={()=>setSidebarOpen(true)} className="text-slate-400 hover:text-white p-2">☰</button>
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <header className={`lg:hidden flex items-center justify-between px-3 py-3 border-b ${bdSide} ${bgHead} sticky top-0 z-20 gap-2`}>
+          <button onClick={()=>setSidebarOpen(true)} className="text-slate-400 hover:text-white p-2 flex-shrink-0">☰</button>
           <AccountToggle mode={accountMode} setMode={setAccountMode}/>
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-xs font-bold text-white">
-            {user.name[0]}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button onClick={()=>setHideNumbers(h=>!h)}
+              title={hideNumbers?"Mostrar valores":"Ocultar valores"}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-colors ${hideNumbers?"bg-amber-500/20 text-amber-400":"bg-slate-700 text-slate-400 hover:text-white"}`}>
+              {hideNumbers?"🙈":"👁"}
+            </button>
+            <button onClick={()=>setDarkMode(d=>!d)}
+              title={darkMode?"Modo Claro":"Modo Escuro"}
+              className="w-8 h-8 rounded-lg bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm transition-colors">
+              {darkMode?"☀️":"🌙"}
+            </button>
           </div>
         </header>
 
@@ -2869,7 +2994,10 @@ export default function App() {
           <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-violet-500/5 rounded-full blur-3xl translate-y-1/3"/>
         </div>
 
-        <main className="flex-1 p-3 sm:p-5 lg:p-8 overflow-y-auto relative pb-28 overflow-x-hidden">
+        <main className="flex-1 p-3 sm:p-5 lg:p-8 overflow-y-auto relative pb-10 overflow-x-hidden">
+          <style>{hideNumbers ? `
+            .hide-num { filter: blur(6px); user-select: none; pointer-events: none; }
+          ` : ''}</style>
           <div className="max-w-5xl mx-auto">
             {pages[page]}
           </div>
