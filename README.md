@@ -1,59 +1,36 @@
-# 💰 Finance Buddy
+# Finance Buddy
 
-Controle financeiro pessoal e empresarial — inspirado no Mordomize.
+Controle financeiro pessoal e empresarial.
 
-## 🚀 Deploy no Vercel (3 passos)
+## Deploy no Vercel
 
-### Opção 1 — Vercel CLI (mais rápido)
-```bash
-npm install -g vercel
-cd finance-buddy
-npm install
-vercel
-```
+### Opção 1 — Arrastar e soltar (mais fácil)
+1. Acesse [vercel.com](https://vercel.com) e faça login
+2. Clique em **"Add New Project"**
+3. Arraste a pasta `finance-buddy` (ou faça upload do ZIP)
+4. O Vercel detecta automaticamente: **Framework = Vite**
+5. Clique **Deploy** — pronto!
 
-### Opção 2 — GitHub + Vercel (recomendado)
-1. Crie um repositório no GitHub e suba este projeto
-2. Acesse [vercel.com](https://vercel.com) → **New Project**
-3. Importe o repositório → clique **Deploy**
-
-> O Vercel detecta automaticamente o Vite e configura tudo.
-
----
-
-## 💻 Rodar localmente
-
+### Opção 2 — Via terminal
 ```bash
 npm install
-npm run dev
+npm run build     # gera a pasta /dist
+npx vercel        # faz deploy
 ```
-Acesse: http://localhost:5173
 
-## 📦 Build de produção
+### Opção 3 — GitHub + Vercel (recomendado para atualizações)
+1. Suba o projeto para um repositório GitHub
+2. No Vercel, conecte o repositório
+3. Cada `git push` faz deploy automático
 
+## Desenvolvimento local
 ```bash
-npm run build
-npm run preview
+npm install
+npm run dev       # abre em http://localhost:5173
 ```
 
----
-
-## 🛠️ Stack
-- **React 18** + **Vite**
-- **TailwindCSS**
-- **Recharts** (gráficos)
-- Deploy: **Vercel**
-
-## 📋 Funcionalidades
-- Dashboard Pessoal e Empresarial
-- Receitas, Despesas, Transações
-- Cartões com controle de fatura e vencimento
-- Dívidas e financiamentos
-- Categorias personalizáveis
-- Metas financeiras
-- Mercado (gastos por supermercado)
-- Veículos
-- Relatórios e gráficos
-- Fluxo de caixa mensal
-- Comparativo anual
-- Perfil e configurações
+## Stack
+- React 18 + Vite
+- Tailwind CSS
+- Recharts
+- Dados salvos no localStorage por usuário
