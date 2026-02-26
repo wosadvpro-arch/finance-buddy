@@ -163,6 +163,34 @@ function NavItem({ icon, label, active, onClick, mode }) {
   );
 }
 
+// ─── MONTH PILLS ─────────────────────────────────────────────────────────────
+function MonthPills({ selected, onSelect, multi=false, accentColor="orange" }) {
+  const colors = {
+    orange: { active:"bg-orange-500 text-white shadow-orange-500/30" },
+    violet: { active:"bg-violet-600 text-white shadow-violet-500/30" },
+  };
+  const c = colors[accentColor] || colors.orange;
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-2">
+      {MONTHS.map((m, i) => {
+        const isActive = multi ? selected.includes(i) : selected === i;
+        return (
+          <button key={i} onClick={() => onSelect(i)}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-150 ${
+              isActive
+                ? `${c.active} shadow-sm`
+                : "bg-slate-700/60 text-slate-400 hover:bg-slate-600/80 hover:text-slate-200"
+            }`}>
+            {m}
+            {multi && isActive && <span className="ml-1 opacity-70">✓</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+
 // ─── PAGES ───────────────────────────────────────────────────────────────────
 
 function Dashboard({ transactions, accountMode, onAddReceita, onAddDespesa }) {
@@ -246,32 +274,7 @@ function Dashboard({ transactions, accountMode, onAddReceita, onAddDespesa }) {
     );
   };
 
-  // ── Shared month pill selector ───────────────────────────────────────────
-  const MonthPills = ({ selected, onSelect, multi=false, accentColor="orange" }) => {
-    const colors = {
-      orange: { active:"bg-orange-500 text-white shadow-orange-500/30", dot:"bg-orange-400" },
-      violet: { active:"bg-violet-600 text-white shadow-violet-500/30", dot:"bg-violet-400" },
-    };
-    const c = colors[accentColor];
-    return (
-      <div className="flex flex-wrap gap-1.5 mt-2">
-        {MONTHS.map((m, i) => {
-          const isActive = multi ? selected.includes(i) : selected === i;
-          return (
-            <button key={i} onClick={() => onSelect(i)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-150 ${
-                isActive
-                  ? `${c.active} shadow-sm`
-                  : "bg-slate-700/60 text-slate-400 hover:bg-slate-600/80 hover:text-slate-200"
-              }`}>
-              {m}
-              {multi && isActive && <span className="ml-1 opacity-70">✓</span>}
-            </button>
-          );
-        })}
-      </div>
-    );
-  };
+  // MonthPills defined at top level
 
   const mesAtual = MONTHS[now.getMonth()];
   const anoAtual = currentYear;
@@ -2503,142 +2506,7 @@ function setUserData(email, key, value) {
 
 
 
-// ─── FLOATING ACTION BUTTON (+ Receita) ──────────────────────────────────────
-function FABReceita({ onAdd, open, setOpen, onDespesaClick }) {
-  const emptyFab = { desc:"", value:"", cat:"Renda", date: new Date().toISOString().split("T")[0] };
-  const [form, setForm] = useState(emptyFab);
-  const [err, setErr]   = useState("");
-
-  const addQuick = (v) => {
-    setErr("");
-    setForm(p => ({ ...p, value: String((parseFloat(p.value) || 0) + v) }));
-  };
-
-  const submit = () => {
-    if (!form.desc.trim()) { setErr("Por favor, adicione uma descrição antes de continuar."); return; }
-    if (!form.value || parseFloat(form.value) <= 0) { setErr("Informe um valor maior que zero."); return; }
-    onAdd({ id: Date.now(), ...form, type:"receita", value: parseFloat(form.value) });
-    setForm(emptyFab);
-    setErr("");
-    setOpen(false);
-  };
-
-  const handleClose = () => { setForm(emptyFab); setErr(""); setOpen(false); };
-
-  return (
-    <>
-      {/* FAB Buttons — stacked */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 items-end">
-        {/* Despesa FAB — shows on hover/always */}
-        <div className="flex items-center gap-2 group">
-          <span className="bg-slate-800 text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg border border-slate-700 whitespace-nowrap">
-            Despesa
-          </span>
-          <button onClick={onDespesaClick} className="w-12 h-12 rounded-full bg-rose-500 hover:bg-rose-400 text-white shadow-xl shadow-rose-500/30 flex items-center justify-center text-xl font-bold transition-all hover:scale-110 active:scale-95">
-            −
-          </button>
-        </div>
-        {/* Receita FAB */}
-        <div className="flex items-center gap-2 group">
-          <span className="bg-slate-800 text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg border border-slate-700 whitespace-nowrap">
-            Receita
-          </span>
-          <button onClick={()=>setOpen(true)}
-            className="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white shadow-2xl shadow-emerald-500/40 flex items-center justify-center text-2xl font-bold transition-all hover:scale-110 active:scale-95">
-            +
-          </button>
-        </div>
-      </div>
-
-      {/* Quick modal */}
-      {open && (
-        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold">↑</span>
-                <h3 className="text-white font-bold">Adicionar Receita</h3>
-              </div>
-              <button onClick={()=>setOpen(false)} className="text-slate-500 hover:text-slate-300 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700">×</button>
-            </div>
-
-            <div>
-              <label className="text-slate-400 text-xs mb-1 block">Descrição <span className="text-rose-400">*</span></label>
-              <input autoFocus type="text" placeholder="Ex: Salário, Freelance..." value={form.desc}
-                onChange={e=>{ setForm(p=>({...p,desc:e.target.value})); setErr(""); }}
-                className={`w-full bg-slate-700/50 border rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none transition-colors ${
-                  err && !form.desc.trim() ? "border-rose-500 focus:border-rose-400" : "border-slate-600 focus:border-emerald-500"
-                }`}/>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-slate-400 text-xs mb-1 block">Valor (R$)</label>
-                <input type="number" placeholder="0,00" value={form.value}
-                  onChange={e=>setForm(p=>({...p,value:e.target.value}))}
-                  className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500"/>
-              </div>
-              <div>
-                <label className="text-slate-400 text-xs mb-1 block">Data</label>
-                <input type="date" value={form.date}
-                  onChange={e=>setForm(p=>({...p,date:e.target.value}))}
-                  className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500"/>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-slate-400 text-xs mb-1 block">Categoria</label>
-              <select value={form.cat} onChange={e=>setForm(p=>({...p,cat:e.target.value}))}
-                className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500">
-                {["Renda","Renda Extra","Investimentos","Freelance","Vendas","Outros"].map(c=><option key={c}>{c}</option>)}
-              </select>
-            </div>
-
-            {/* Quick amounts — cumulativos */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-slate-500 text-xs">Valores rápidos <span className="text-slate-600">(clique para acumular)</span></p>
-                {form.value && parseFloat(form.value) > 0 && (
-                  <button onClick={()=>setForm(p=>({...p,value:""}))}
-                    className="text-xs text-slate-500 hover:text-rose-400 transition-colors">
-                    ✕ limpar
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {[500,1000,1500,2000,3000,5000].map(v=>(
-                  <button key={v} onClick={()=>addQuick(v)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all bg-slate-700 text-slate-300 hover:bg-emerald-500/20 hover:text-emerald-400 active:scale-95">
-                    +R${v.toLocaleString("pt-BR")}
-                  </button>
-                ))}
-              </div>
-              {form.value && parseFloat(form.value) > 0 && (
-                <p className="text-emerald-400 text-xs font-mono font-bold mt-2">
-                  Total acumulado: R$ {parseFloat(form.value).toLocaleString("pt-BR", {minimumFractionDigits:2})}
-                </p>
-              )}
-            </div>
-
-            {err && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30">
-                <span className="text-rose-400 text-sm">⚠️</span>
-                <p className="text-rose-400 text-xs font-medium">{err}</p>
-              </div>
-            )}
-
-            <button onClick={submit}
-              className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold text-sm transition-colors shadow-lg shadow-emerald-500/20">
-              ✓ Adicionar Receita
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
-// ─── ADD DESPESA MODAL ────────────────────────────────────────────────────────
+// ─── ADD DESPESA MODAL ───────────────────────────────────────────────────────
 function AddDespesaModal({ onAdd, open, setOpen }) {
   const emptyD = { desc:"", value:"", cat:"Alimentação", date: new Date().toISOString().split("T")[0] };
   const [form, setForm] = useState(emptyD);
@@ -2700,7 +2568,7 @@ function AddDespesaModal({ onAdd, open, setOpen }) {
         </div>
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-slate-500 text-xs">Valores rápidos <span className="text-slate-600">(clique para acumular)</span></p>
+            <p className="text-slate-500 text-xs">Valores rápidos <span className="text-slate-600">(cumulativos)</span></p>
             {form.value && parseFloat(form.value) > 0 && (
               <button onClick={()=>setForm(p=>({...p,value:""}))} className="text-xs text-slate-500 hover:text-rose-400 transition-colors">✕ limpar</button>
             )}
@@ -2715,7 +2583,7 @@ function AddDespesaModal({ onAdd, open, setOpen }) {
           </div>
           {form.value && parseFloat(form.value) > 0 && (
             <p className="text-rose-400 text-xs font-mono font-bold mt-2">
-              Total acumulado: R$ {parseFloat(form.value).toLocaleString("pt-BR", {minimumFractionDigits:2})}
+              Total: R$ {parseFloat(form.value).toLocaleString("pt-BR", {minimumFractionDigits:2})}
             </p>
           )}
         </div>
@@ -2733,6 +2601,7 @@ function AddDespesaModal({ onAdd, open, setOpen }) {
     </div>
   );
 }
+
 
 // ─── FLOATING ACTION BUTTON (+ Receita) ──────────────────────────────────────
 function FABReceita({ onAdd, open, setOpen, onDespesaClick }) {
